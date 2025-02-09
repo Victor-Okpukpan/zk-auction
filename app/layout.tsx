@@ -4,6 +4,8 @@ import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
+import Script from 'next/script'
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +36,9 @@ export default function RootLayout({
           <main>{children}</main>
         </Providers>
         <Toaster />
+
       </body>
+      <Script src="/snarkjs.min.js"></Script>
     </html>
   );
 }
