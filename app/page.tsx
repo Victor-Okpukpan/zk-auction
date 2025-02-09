@@ -7,21 +7,21 @@ import Link from "next/link";
 const features = [
   {
     icon: <Shield className="h-6 w-6" />,
-    title: "Secure Bidding",
+    title: "Bid Integrity",
     description:
-      "Your bids are protected with zero-knowledge proofs on Arbitrum, ensuring complete privacy and security.",
+      "Our commit–reveal system ensures that once you place your bid, it cannot be altered—guaranteeing a secure and fair auction process.",
   },
   {
     icon: <Lock className="h-6 w-6" />,
-    title: "Private Transactions",
+    title: "Transparent Settlements",
     description:
-      "All auction activities are confidential, visible only to relevant parties.",
+      "All funds are handled securely by our smart contract, ensuring that the winning bid is settled to the seller while losing bids are refunded automatically.",
   },
   {
     icon: <Zap className="h-6 w-6" />,
-    title: "Instant Settlement",
+    title: "Reliable Auction Process",
     description:
-      "Auctions are settled automatically and instantly upon completion.",
+      "Leveraging Arbitrum’s scalability and robust cryptographic proofs, our platform delivers a trustworthy auction experience every time.",
   },
 ];
 
@@ -45,12 +45,13 @@ export default function HomePage() {
           className="max-w-2xl"
         >
           <h2 className="text-3xl font-semibold leading-tight">
-            The First Zero-Knowledge NFT Auction Platform
+            The First Secure NFT Auction Platform on Arbitrum
           </h2>
           <p className="mt-6 text-xl text-muted-foreground">
-            Trade your NFTs with complete privacy on Arbitrum. Our platform
-            leverages Arbitrum&apos;s scalability and security while using
-            zero-knowledge proofs to ensure your bids remain confidential.
+            Experience NFT auctions where bid integrity is paramount. Our
+            platform uses a state-of-the-art commit–reveal mechanism and
+            zero-knowledge proofs to ensure your bid remains immutable once
+            submitted, delivering a fair and transparent auction process.
           </p>
           <div className="mt-8 flex gap-4">
             <Link
