@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { useNFTs } from "@/hooks/useNFTs";
+import MintNftButton from "@/components/mint-nft-button";
 
 export default function CreateAuction() {
   const { isConnected } = useAccount();
@@ -39,9 +40,12 @@ export default function CreateAuction() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold mb-5 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between max-w-2xl mx-auto mb-4">
+        <h1 className="text-3xl font-bold mb-5">
           Create Auction
         </h1>
+        <MintNftButton />
+        </div>
         {!isConnected ? (
           <div className="flex flex-col items-center gap-4 rounded-xl bg-card p-8 text-center max-w-2xl mx-auto">
             <h2 className="text-xl font-semibold">Connect Your Wallet</h2>
