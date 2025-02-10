@@ -21,6 +21,7 @@ export default function MintNftButton() {
       console.log(error);
     }
   };
+  
   return (
     <button
       onClick={mintNft}

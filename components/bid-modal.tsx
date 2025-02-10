@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useWriteContract } from "wagmi";
+import { auctionAbi } from "@/lib/AuctionAbi";
 
 interface BidModalProps {
   nft: any;
@@ -36,26 +39,77 @@ const durationOptions = [
 ];
 
 export function BidModal({ nft, onClose }: BidModalProps) {
+  const { writeContractAsync } = useWriteContract();
   const [startTime, setStartTime] = useState("");
   const [revealDuration, setRevealDuration] = useState("");
   const [commitDuration, setCommitDuration] = useState("");
   const [nftContract, setNftContract] = useState("");
   const [nftId, setNftId] = useState("");
+  const [minBid, setMinBid] = useState("");
+
+  const CONTRACT_ADDRESS = "0xcB26E956ba06d77dea887d74592223148dC9D08c";
 
   useEffect(() => {
     setNftContract(nft.contractAddress);
     setNftId(nft.tokenId);
   }, [nft]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const createAuction = async (
+    address: string,
+    id: string,
+    bid: bigint,
+    startTime: number,
+    commit: string,
+    reveal: string
+  ) => {
+    try {
+      const numericId = Number(id);
+      const commitValue = Number(commit);
+      const revealValue = Number(reveal);
+
+      if (isNaN(numericId) || isNaN(commitValue) || isNaN(revealValue)) {
+        throw new Error("Invalid ID: Not a number");
+      }
+
+      const result = await writeContractAsync({
+        abi: auctionAbi,
+        address: CONTRACT_ADDRESS,
+        functionName: "createAuction",
+        args: [address, numericId, bid, startTime, commitValue, revealValue],
+      });
+
+      console.log(result);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement bid submission logic here
+
+    const startTimeUnix = Math.floor(new Date(startTime).getTime() / 1000);
+    const minBidWei = ethers.utils.parseEther(minBid);
+    const minBidBigInt = BigInt(minBidWei.toString());
+    try {
+      await createAuction(
+        nftContract,
+        nftId,
+        minBidBigInt,
+        startTimeUnix,
+        commitDuration,
+        revealDuration
+      );
+    } catch (error) {
+      console.log(error);
+    }
+
     console.log("Bid submitted:", {
       nftContract,
       nftId,
-      startTime,
+      startTime: startTimeUnix,
       commitDuration,
       revealDuration,
+      minBid: minBidBigInt,
     });
     onClose();
   };
@@ -90,7 +144,9 @@ export function BidModal({ nft, onClose }: BidModalProps) {
             />
           </div>
           <div className="flex-grow pr-5">
-            <h3 className="text-lg font-semibold truncate max-w-52">{nft.name}</h3>
+            <h3 className="text-lg font-semibold truncate max-w-52">
+              {nft.name}
+            </h3>
             <p className="text-sm text-muted-foreground text-wrap truncate max-w-52">
               #{nft.tokenId}
             </p>
@@ -149,6 +205,20 @@ export function BidModal({ nft, onClose }: BidModalProps) {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label htmlFor="minBid">Minimum Bid (ETH)</Label>
+            <Input
+              id="minBid"
+              type="number"
+              step="0.000000000000000001"
+              min="0"
+              value={minBid}
+              onChange={(e) => setMinBid(e.target.value)}
+              required
+              placeholder="0.1"
+            />
+          </div>
+
           <Button type="submit" className="w-full">
             Place Bid
           </Button>
