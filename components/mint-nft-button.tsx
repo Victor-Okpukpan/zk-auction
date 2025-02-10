@@ -1,9 +1,11 @@
 "use client";
+import { useNFTs } from "@/hooks/useNFTs";
 import { nftAbi } from "@/lib/NftAbi";
 import { useWriteContract } from "wagmi";
 
 export default function MintNftButton() {
   const { writeContractAsync } = useWriteContract();
+  const { refetch } = useNFTs(); 
 
   const mintNft = async () => {
     try {
@@ -14,6 +16,7 @@ export default function MintNftButton() {
       });
 
       console.log(result);
+      refetch();
     } catch (error) {
       console.log(error);
     }
