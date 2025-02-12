@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import CreateAuctionButton from "@/components/create-auction-button";
 import AuctionList from "@/components/auction-list";
+import MintNftButton from "@/components/mint-nft-button";
 
 export default function AuctionsPage() {
   return (
@@ -27,12 +28,6 @@ export default function AuctionsPage() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link
-              href="/auctions/manage"
-              className=" px-4 py-2 font-medium"
-            >
-              Manage My Auctions
-            </Link>
             <ConnectButton showBalance={false} />
           </div>
         </div>
@@ -40,7 +35,10 @@ export default function AuctionsPage() {
         <div className="w-full max-w-6xl">
           <div className="mb-8 flex items-center justify-between">
             <h1 className="text-4xl font-bold">Active Auctions</h1>
-            <CreateAuctionButton />
+            <div className="flex space-x-3 items-center">
+              <MintNftButton />
+              <CreateAuctionButton />
+            </div>
           </div>
           <AuctionList />
         </div>

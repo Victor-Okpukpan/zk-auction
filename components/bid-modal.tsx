@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { useWriteContract } from "wagmi";
 import { auctionAbi } from "@/lib/AuctionAbi";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface BidModalProps {
   nft: any;
@@ -29,30 +31,64 @@ const durationOptions = [
   { label: "5 minutes", value: 300 },
   { label: "10 minutes", value: 600 },
   { label: "20 minutes", value: 1200 },
-  { label: "30 minutes", value: 1800 },
-  { label: "1 hour", value: 3600 },
-  { label: "2 hours", value: 7200 },
-  { label: "5 hours", value: 18000 },
-  { label: "6 hours", value: 21600 },
-  { label: "12 hours", value: 43200 },
-  { label: "1 day", value: 86400 },
+  // { label: "30 minutes", value: 1800 },
+  // { label: "1 hour", value: 3600 },
+  // { label: "2 hours", value: 7200 },
+  // { label: "5 hours", value: 18000 },
+  // { label: "6 hours", value: 21600 },
+  // { label: "12 hours", value: 43200 },
+  // { label: "1 day", value: 86400 },
 ];
 
 export function BidModal({ nft, onClose }: BidModalProps) {
+  const router = useRouter();
   const { writeContractAsync } = useWriteContract();
+  const { toast } = useToast();
+  
   const [startTime, setStartTime] = useState("");
   const [revealDuration, setRevealDuration] = useState("");
   const [commitDuration, setCommitDuration] = useState("");
   const [nftContract, setNftContract] = useState("");
   const [nftId, setNftId] = useState("");
   const [minBid, setMinBid] = useState("");
+  const [approved, setApproved] = useState(false);
 
-  const CONTRACT_ADDRESS = "0xcB26E956ba06d77dea887d74592223148dC9D08c";
+  const [loadingApprove, setLoadingApprove] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
+
+  const CONTRACT_ADDRESS: `0x{string}` = process.env.NEXT_PUBLIC_AUCTION_MANAGER! as `0x{string}`;
+
 
   useEffect(() => {
     setNftContract(nft.contractAddress);
     setNftId(nft.tokenId);
   }, [nft]);
+
+  const handleApproveNFT = async () => {
+    setLoadingApprove(true);
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const erc721Abi = ["function approve(address to, uint256 tokenId) external"];
+      const nftInstance = new ethers.Contract(nftContract, erc721Abi, signer);
+      const tx = await nftInstance.approve(CONTRACT_ADDRESS, nftId);
+      await tx.wait();
+      setApproved(true);
+      toast({
+        title: "NFT Approved",
+        description: "Your NFT has been approved successfully.",
+      });
+    } catch (error) {
+      console.error("Error approving NFT:", error);
+      toast({
+        variant: "destructive",
+        title: "Approval Failed",
+        description: "There was an error approving your NFT.",
+      });
+    } finally {
+      setLoadingApprove(false);
+    }
+  };
 
   const createAuction = async (
     address: string,
@@ -79,17 +115,38 @@ export function BidModal({ nft, onClose }: BidModalProps) {
       });
 
       console.log(result);
+      router.push("/auctions");
+      toast({
+        title: "Auction Created",
+        description: "Your auction has been created successfully.",
+      });
     } catch (error) {
       console.log(error);
+      toast({
+        variant: "destructive",
+        title: "Auction Creation Failed",
+        description: "There was an error creating your auction.",
+      });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!approved) {
+      console.error("Please approve the NFT before creating the auction.");
+      toast({
+        variant: "destructive",
+        title: "Approval Required",
+        description: "Please approve the NFT before creating the auction.",
+      });
+      return;
+    }
+
     const startTimeUnix = Math.floor(new Date(startTime).getTime() / 1000);
     const minBidWei = ethers.utils.parseEther(minBid);
     const minBidBigInt = BigInt(minBidWei.toString());
+    setLoadingCreate(true);
     try {
       await createAuction(
         nftContract,
@@ -101,9 +158,12 @@ export function BidModal({ nft, onClose }: BidModalProps) {
       );
     } catch (error) {
       console.log(error);
+    } finally {
+      setLoadingCreate(false);
+      onClose();
     }
 
-    console.log("Bid submitted:", {
+    console.log("Auction Created:", {
       nftContract,
       nftId,
       startTime: startTimeUnix,
@@ -111,7 +171,6 @@ export function BidModal({ nft, onClose }: BidModalProps) {
       revealDuration,
       minBid: minBidBigInt,
     });
-    onClose();
   };
 
   return (
@@ -128,7 +187,7 @@ export function BidModal({ nft, onClose }: BidModalProps) {
         className="bg-background rounded-lg p-6 w-full max-w-md overflow-hidden"
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Place Bid</h2>
+          <h2 className="text-2xl font-bold">Create Auction</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-6 w-6" />
           </Button>
@@ -219,9 +278,17 @@ export function BidModal({ nft, onClose }: BidModalProps) {
             />
           </div>
 
-          <Button type="submit" className="w-full">
-            Place Bid
-          </Button>
+          {!approved && (
+            <Button onClick={handleApproveNFT} disabled={loadingApprove} className="w-full">
+              {loadingApprove ? "Approving NFT..." : "Approve NFT"}
+            </Button>
+          )}
+
+          {approved && (
+            <Button type="submit" disabled={loadingCreate} className="w-full">
+              {loadingCreate ? "Creating Auction..." : "Create Auction"}
+            </Button>
+          )}
         </form>
       </motion.div>
     </motion.div>

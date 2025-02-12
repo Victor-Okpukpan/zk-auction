@@ -10,73 +10,32 @@ import { Dialog } from "@headlessui/react";
 import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import { auctionAbi } from "@/lib/AuctionAbi";
-// import { verifyProof } from "@/hooks/useZkVerify";
-import vk from "../circuits/key_verification.json";
+import vk from "../circuits/vk.json";
+import { ethers } from "ethers";
 
-// -----------------------------------------------------------------------------
-// Updated Interfaces to Match the Smart Contract
-// -----------------------------------------------------------------------------
-
-// Represents a bid commitment as defined in the smart contract.
 interface IBidCommit {
   bidder: string;
-  deposit: string; // Deposited funds (as a string for simplicity)
-  bidCommitment: string; // The commitment hash (as a string)
+  deposit: string;
+  bidCommitment: string;
   revealed: boolean;
-  bidValue: string; // Revealed bid value (as a string)
+  bidValue: string;
   refunded: boolean;
 }
 
-// Updated Auction interface matching the contract's Auction struct.
 interface IAuction {
-  id: number; // Added an id field for front-end use
+  id: number;
   seller: string;
   nftAddress: string;
   tokenId: string;
-  minBid: string; // Minimum bid (in wei or ETH as string)
-  startTime: number; // Unix timestamp for when commit phase starts
-  commitEndTime: number; // Unix timestamp for end of commit phase
-  revealEndTime: number; // Unix timestamp for end of reveal phase
+  minBid: string;
+  startTime: number;
+  commitEndTime: number;
+  revealEndTime: number;
   closed: boolean;
   highestBidder: string;
   bids: IBidCommit[];
 }
 
-// -----------------------------------------------------------------------------
-// Dummy Auctions (for testing/demo) updated to match IAuction
-// -----------------------------------------------------------------------------
-const DUMMY_AUCTIONS: IAuction[] = [
-  {
-    id: 1,
-    seller: "0xSeller1",
-    nftAddress: "0xNFTAddress1",
-    tokenId: "1",
-    minBid: "1.5", // In ETH
-    startTime: Math.floor(Date.now() / 1000) - 500, // Started 500 seconds ago
-    commitEndTime: Math.floor(Date.now() / 1000) + 3600, // Commit phase ends in 1 hour
-    revealEndTime: Math.floor(Date.now() / 1000) + 7200, // Reveal phase ends in 2 hours
-    closed: false,
-    highestBidder: "0x0000000000000000000000000000000000000000",
-    bids: [],
-  },
-  {
-    id: 2,
-    seller: "0xSeller2",
-    nftAddress: "0xNFTAddress2",
-    tokenId: "2",
-    minBid: "2.8", // In ETH
-    startTime: Math.floor(Date.now() / 1000) - 1000, // Started 1000 seconds ago
-    commitEndTime: Math.floor(Date.now() / 1000) - 100, // Commit phase ended 100 seconds ago
-    revealEndTime: Math.floor(Date.now() / 1000) + 1800, // Reveal phase ends in 30 minutes
-    closed: false,
-    highestBidder: "0x0000000000000000000000000000000000000000",
-    bids: [],
-  },
-];
-
-// -----------------------------------------------------------------------------
-// Helper Function: Format seconds into a countdown string (HHh MMm SSs)
-// -----------------------------------------------------------------------------
 const formatCountdown = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -84,12 +43,8 @@ const formatCountdown = (seconds: number) => {
   return `${hrs}h ${mins}m ${secs}s`;
 };
 
-// -----------------------------------------------------------------------------
-// AuctionList Component with Countdown and Reveal Phase Button
-// -----------------------------------------------------------------------------
 export default function AuctionList() {
   const { writeContractAsync } = useWriteContract();
-  // const { onVerifyProof, status, transactionResult, error } = useZkVerify();
   const { toast } = useToast();
   const { isConnected } = useAccount();
   const [selectedAuction, setSelectedAuction] = useState<IAuction | null>(null);
@@ -97,13 +52,11 @@ export default function AuctionList() {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingProof, setLoadingProof] = useState(false);
   const [auctions, setAuctions] = useState<IAuction[]>([]);
-
-  // Current time (in seconds) for countdown calculations.
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
 
-  const CONTRACT_ADDRESS = "0xcB26E956ba06d77dea887d74592223148dC9D08c";
+  const CONTRACT_ADDRESS: `0x{string}` = process.env
+    .NEXT_PUBLIC_AUCTION_MANAGER! as `0x{string}`;
 
-  // Update the current time every second.
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(Math.floor(Date.now() / 1000));
@@ -111,15 +64,12 @@ export default function AuctionList() {
     return () => clearInterval(interval);
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // zkSNARK Proof Generation (dummy implementation for demonstration)
-  // ---------------------------------------------------------------------------
   const generateProof = async (bidValue: string, minBid: any) => {
     const randomSalt = BigInt(Math.floor(Math.random() * 1e12)).toString();
     const input = {
-      bid: bidValue.toString(),
+      bid: bidValue,
       salt: randomSalt,
-      minBid: minBid.toString(),
+      minBid: minBid,
     };
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(
       input,
@@ -129,9 +79,6 @@ export default function AuctionList() {
     return { proof, publicSignals, randomSalt };
   };
 
-  // ---------------------------------------------------------------------------
-  // Place Bid Handler
-  // ---------------------------------------------------------------------------
   const handlePlaceBid = async () => {
     if (!selectedAuction || !bidAmount) return;
     setLoadingProof(true);
@@ -143,17 +90,16 @@ export default function AuctionList() {
         bidAmount
       );
 
-      const minBid = BigInt(Math.floor(parseFloat(selectedAuction.minBid)));
-      // Generate the zkSNARK proof for the bid.
-      const { proof, publicSignals, randomSalt } = await generateProof(
-        bidAmount,
-        minBid
-      );
-      console.log("Generated Proof:", proof);
-      console.log("Public Signals:", publicSignals);
-      console.log("Random Salt used:", randomSalt);
+      const bidValueWeiStr = ethers.utils.parseEther(bidAmount).toString();
+      const bidValueBN = ethers.utils.parseEther(bidAmount);
 
-      // Make API request to verify the proof
+      const minBidWeiStr = selectedAuction.minBid;
+
+      const { proof, publicSignals, randomSalt } = await generateProof(
+        bidValueWeiStr,
+        minBidWeiStr
+      );
+
       const response = await fetch("/api/verify-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,13 +114,20 @@ export default function AuctionList() {
 
       console.log(data);
 
-      // Using the auction id from selectedAuction
-      // const result = await writeContractAsync({
-      //   abi: auctionAbi,
-      //   address: CONTRACT_ADDRESS,
-      //   functionName: "commitBid",
-      //   args: [selectedAuction.id, publicSignals],
-      // });
+      const result = await writeContractAsync({
+        abi: auctionAbi,
+        address: CONTRACT_ADDRESS,
+        functionName: "commitBid",
+        args: [selectedAuction.id, publicSignals[0]],
+        value: bidValueBN.toBigInt(),
+      });
+
+      localStorage.setItem(
+        `bidData-${selectedAuction.id}`,
+        JSON.stringify({ bidValueWeiStr, randomSalt })
+      );
+
+      console.log(result);
 
       toast({
         variant: "default",
@@ -195,61 +148,101 @@ export default function AuctionList() {
     setLoadingProof(false);
   };
 
+  const { data: activeAuctionsOnChain, refetch: refetchAuctions } =
+    useReadContract({
+      abi: auctionAbi,
+      address: CONTRACT_ADDRESS,
+      functionName: "getActiveAuctions",
+    });
+
   const handleRevealBids = async (id: number) => {
     try {
-      const result = await writeContractAsync({
-        abi: auctionAbi,
-        address: CONTRACT_ADDRESS,
-        functionName: "commitBid",
-        // args: [id, bidValue, salt],
-      });
+      const storedBidData = localStorage.getItem(`bidData-${id}`);
+      if (storedBidData) {
+        const { bidValueWeiStr, randomSalt } = JSON.parse(storedBidData);
+        const result = await writeContractAsync({
+          abi: auctionAbi,
+          address: CONTRACT_ADDRESS,
+          functionName: "revealBid",
+          args: [id, bidValueWeiStr, randomSalt],
+        });
+        refetchAuctions();
+        console.log(result);
+      }
     } catch (error) {
       console.log(error);
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Fetch Active Auctions from the Contract (or use dummy data)
-  // ---------------------------------------------------------------------------
-  const { data } = useReadContract({
-    abi: auctionAbi,
-    address: CONTRACT_ADDRESS,
-    functionName: "getActiveAuctions",
-  });
+  useEffect(() => {
+    if (activeAuctionsOnChain) {
+      setAuctions(activeAuctionsOnChain as IAuction[]);
+    }
+  }, [activeAuctionsOnChain]);
 
   useEffect(() => {
-    if (data) {
-      setAuctions(data as IAuction[]);
-    } else {
-      // Fallback to dummy data if no real data is available.
-      setAuctions(DUMMY_AUCTIONS);
-    }
-  }, [data]);
+    if (auctions.length === 0) return;
 
-  // ---------------------------------------------------------------------------
-  // Determine the current auction phase and remaining time
-  // ---------------------------------------------------------------------------
+    const activeRevealAuctions = auctions.filter((auction) => {
+      const revealEnd =
+        typeof auction.revealEndTime === "bigint"
+          ? Number(auction.revealEndTime)
+          : auction.revealEndTime;
+      return currentTime < revealEnd;
+    });
+
+    if (activeRevealAuctions.length === 0) return;
+
+    const nextRevealEnd = Math.min(
+      ...activeRevealAuctions.map((auction) =>
+        typeof auction.revealEndTime === "bigint"
+          ? Number(auction.revealEndTime)
+          : auction.revealEndTime
+      )
+    );
+
+    const delaySeconds = nextRevealEnd - currentTime;
+
+    if (delaySeconds > 0) {
+      const timeout = setTimeout(() => {
+        refetchAuctions();
+      }, delaySeconds * 1000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [auctions, currentTime, refetchAuctions]);
+
   const getAuctionPhase = (auction: IAuction) => {
-    if (currentTime < auction.startTime) {
+    const startTimeNum =
+      typeof auction.startTime === "bigint"
+        ? Number(auction.startTime)
+        : auction.startTime;
+    const commitEndTimeNum =
+      typeof auction.commitEndTime === "bigint"
+        ? Number(auction.commitEndTime)
+        : auction.commitEndTime;
+    const revealEndTimeNum =
+      typeof auction.revealEndTime === "bigint"
+        ? Number(auction.revealEndTime)
+        : auction.revealEndTime;
+
+    if (currentTime < startTimeNum) {
       return {
         phase: "Not Started",
-        countdown: auction.startTime - currentTime,
+        countdown: startTimeNum - currentTime,
       };
-    } else if (
-      currentTime >= auction.startTime &&
-      currentTime < auction.commitEndTime
-    ) {
+    } else if (currentTime >= startTimeNum && currentTime < commitEndTimeNum) {
       return {
         phase: "Commit Phase",
-        countdown: auction.commitEndTime - currentTime,
+        countdown: commitEndTimeNum - currentTime,
       };
     } else if (
-      currentTime >= auction.commitEndTime &&
-      currentTime < auction.revealEndTime
+      currentTime >= commitEndTimeNum &&
+      currentTime < revealEndTimeNum
     ) {
       return {
         phase: "Reveal Phase",
-        countdown: auction.revealEndTime - currentTime,
+        countdown: revealEndTimeNum - currentTime,
       };
     } else {
       return {
@@ -261,84 +254,119 @@ export default function AuctionList() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {auctions.map((auction, i) => {
-          const { phase, countdown } = getAuctionPhase(auction);
-          return (
-            <motion.div
-              key={auction.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="group overflow-hidden rounded-xl bg-card/80 p-6 shadow-lg backdrop-blur-sm transition-all hover:shadow-xl dark:bg-card/40"
-            >
-              <div className="relative aspect-square overflow-hidden rounded-lg">
-                {/* Replace with your NFT image logic */}
-                <img
-                  src="https://via.placeholder.com/300"
-                  alt={`Auction ${auction.id}`}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              </div>
-              <div className="mt-4 space-y-3">
-                <h3 className="text-xl font-semibold">Auction #{auction.id}</h3>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Gavel className="h-4 w-4 text-primary" />
-                    <span>{auction.minBid} ETH</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Timer className="h-4 w-4" />
-                    <span>{formatCountdown(countdown)}</span>
-                  </div>
+      {auctions.length === 0 ? (
+        <div className="flex items-center justify-center py-10">
+          <p className="text-lg font-semibold">No Active Auctions</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {auctions.map((auction, i) => {
+            const { phase, countdown } = getAuctionPhase(auction);
+            return (
+              <motion.div
+                key={auction.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="group overflow-hidden rounded-xl bg-card/80 p-6 shadow-lg backdrop-blur-sm transition-all hover:shadow-xl dark:bg-card/40"
+              >
+                <div className="relative aspect-square overflow-hidden rounded-lg">
+                  <img
+                    src="https://via.placeholder.com/300"
+                    alt={`Auction ${auction.id}`}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Current Phase: <strong>{phase}</strong>
-                </p>
-                {/* Conditionally show the Reveal button during the Reveal Phase */}
-                {phase === "Reveal Phase" ? (
-                  <button
-                    onClick={() => {
-                      handleRevealBids(auction.id);
-                      toast({
-                        variant: "default",
-                        title: "Reveal Phase Active",
-                        description: "It's time to reveal your bid!",
-                      });
-                    }}
-                    className="w-full rounded-lg bg-secondary px-4 py-3 font-medium text-secondary-foreground transition-colors hover:bg-secondary/90"
-                  >
-                    Reveal Your Bid
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (!isConnected) {
+                <div className="mt-4 space-y-3">
+                  <h3 className="text-xl font-semibold">
+                    Auction #{auction.id}
+                  </h3>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Gavel className="h-4 w-4 text-primary" />
+                      <span>
+                        {ethers.utils.formatEther(auction.minBid)} ETH
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Timer className="h-4 w-4" />
+                      <span>{formatCountdown(countdown)}</span>
+                    </div>
+                  </div>
+                  {phase === "Finalization Phase" ? (
+                    <p className="text-[10px] text-muted-foreground">
+                      Highest Bidder:{" "}
+                      <strong>
+                        {auction.highestBidder !==
+                        "0x0000000000000000000000000000000000000000"
+                          ? auction.highestBidder
+                          : "No bids"}
+                      </strong>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground">
+                      Current Phase: <strong>{phase}</strong>
+                    </p>
+                  )}
+                  {phase === "Reveal Phase" ? (
+                    <button
+                      onClick={() => {
+                        handleRevealBids(auction.id);
                         toast({
-                          variant: "destructive",
-                          title: "Your wallet is not connected!",
-                          description: "Connect your wallet and try again.",
+                          variant: "default",
+                          title: "Reveal Phase Active",
+                          description: "It's time to reveal your bid!",
                         });
-                        return;
+                      }}
+                      className="w-full rounded-lg bg-secondary px-4 py-3 font-medium text-secondary-foreground transition-colors hover:bg-secondary/90"
+                    >
+                      Reveal Your Bid
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (
+                          phase === "Not Started" ||
+                          phase === "Finalization Phase"
+                        )
+                          return;
+                        if (!isConnected) {
+                          toast({
+                            variant: "destructive",
+                            title: "Your wallet is not connected!",
+                            description: "Connect your wallet and try again.",
+                          });
+                          return;
+                        }
+                        setSelectedAuction(auction);
+                        setIsOpen(true);
+                      }}
+                      disabled={
+                        phase === "Not Started" ||
+                        phase === "Finalization Phase"
                       }
-                      setSelectedAuction(auction);
-                      setIsOpen(true);
-                    }}
-                    className="w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    Place Bid
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+                      className={`w-full rounded-lg px-4 py-3 font-medium transition-colors ${
+                        phase === "Not Started" ||
+                        phase === "Finalization Phase"
+                          ? "bg-gray-500 cursor-not-allowed"
+                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      }`}
+                    >
+                      {phase === "Not Started"
+                        ? "Not Started"
+                        : phase === "Finalization Phase"
+                        ? "Bid Ended"
+                        : "Place Bid"}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* -----------------------------------------------------------------------
-           Bid Dialog
-      ----------------------------------------------------------------------- */}
       <Dialog
         open={isOpen}
         onClose={() => setIsOpen(false)}
@@ -355,7 +383,10 @@ export default function AuctionList() {
             </Dialog.Title>
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">
-                Minimum bid: {selectedAuction?.minBid} ETH
+                Minimum bid:{" "}
+                {selectedAuction
+                  ? `${ethers.utils.formatEther(selectedAuction.minBid)} ETH`
+                  : ""}
               </p>
               <div className="mt-4">
                 <label className="mb-2 block text-sm font-medium">
@@ -364,20 +395,38 @@ export default function AuctionList() {
                 <input
                   type="number"
                   step="0.01"
-                  min={Number(selectedAuction?.minBid) || 0}
+                  min={Number(
+                    selectedAuction
+                      ? ethers.utils.formatEther(selectedAuction.minBid)
+                      : 0
+                  )}
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
                   className="w-full rounded-lg border bg-background px-4 py-2"
-                  placeholder={`Min. ${selectedAuction?.minBid}`}
+                  placeholder={
+                    selectedAuction
+                      ? `Min. ${ethers.utils.formatEther(
+                          selectedAuction.minBid
+                        )}`
+                      : ""
+                  }
                 />
               </div>
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={handlePlaceBid}
-                  disabled={!bidAmount || loadingProof}
+                  disabled={
+                    !bidAmount ||
+                    loadingProof ||
+                    (selectedAuction &&
+                      parseFloat(bidAmount) <
+                        parseFloat(
+                          ethers.utils.formatEther(selectedAuction.minBid)
+                        ))
+                  }
                   className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loadingProof ? "Generating Proof..." : "Confirm Bid"}
+                  {loadingProof ? "Processing..." : "Confirm Bid"}
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}

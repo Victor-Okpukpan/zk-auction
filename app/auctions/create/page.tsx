@@ -9,7 +9,6 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 import { useNFTs } from "@/hooks/useNFTs"
-import MintNftButton from "@/components/mint-nft-button"
 import { Card, CardContent } from "@/components/ui/card"
 import { NFTGrid } from "@/components/nft-grid"
 import { BidModal } from "@/components/bid-modal"
@@ -39,7 +38,7 @@ export default function CreateAuction() {
 
         <div className="flex items-center justify-between mb-8">
         <h1 className="text-4xl font-bold">Create Auction</h1>
-        <MintNftButton />
+        
         </div>
 
         {!isConnected ? (

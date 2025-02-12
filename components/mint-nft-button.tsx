@@ -1,33 +1,47 @@
 "use client";
-import { useNFTs } from "@/hooks/useNFTs";
+import { useState } from "react";
 import { nftAbi } from "@/lib/NftAbi";
 import { useWriteContract } from "wagmi";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MintNftButton() {
   const { writeContractAsync } = useWriteContract();
-  const { refetch } = useNFTs(); 
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const mintNft = async () => {
+    setLoading(true);
     try {
       const result = await writeContractAsync({
         abi: nftAbi,
-        address: "0xcB26E956ba06d77dea887d74592223148dC9D08c",
+        address: process.env.NEXT_PUBLIC_SAD_FACE! as `0x{string}`,
         functionName: "mintNft",
       });
-
       console.log(result);
-      refetch();
+      
+      toast({
+        title: "NFT Minted",
+        description: "Your NFT has been minted successfully.",
+      });
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Minting Failed",
+        description: "There was an error minting your NFT. Please try again.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
   
   return (
     <button
       onClick={mintNft}
-      className="flex items-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      disabled={loading}
+      className="flex items-center gap-2 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      Mint NFT
+      {loading ? "Minting NFT..." : "Mint NFT"}
     </button>
   );
 }
