@@ -16,7 +16,6 @@ import { BidModal } from "@/components/bid-modal"
 export default function CreateAuction() {
   const { isConnected } = useAccount()
   const { nfts, loading, error } = useNFTs()
-  console.log(nfts);
   const [selectedNFT, setSelectedNFT] = useState<any | null>(null)
   const [isBidModalOpen, setIsBidModalOpen] = useState(false)
 

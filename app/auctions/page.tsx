@@ -19,13 +19,7 @@ export default function AuctionsPage() {
       >
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Back
-            </Link>
+            
           </div>
           <div className="flex items-center gap-4">
             <ConnectButton showBalance={false} />
@@ -34,7 +28,7 @@ export default function AuctionsPage() {
 
         <div className="w-full max-w-6xl">
           <div className="mb-8 flex items-center justify-between">
-            <h1 className="text-4xl font-bold">Active Auctions</h1>
+            <h1 className="text-4xl font-bold">Auctions</h1>
             <div className="flex space-x-3 items-center">
               <MintNftButton />
               <CreateAuctionButton />
