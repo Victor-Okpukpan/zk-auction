@@ -200,7 +200,6 @@ export default function AuctionList() {
     if (!selectedAuction || !bidAmount) return
     setLoadingProof(true)
     try {
-      console.log("Verifying proof for auction:", selectedAuction.id, "with bid amount:", bidAmount)
       const bidValueWeiStr = ethers.utils.parseEther(bidAmount).toString()
       const minBidWeiStr = selectedAuction.minBid
 
@@ -215,7 +214,6 @@ export default function AuctionList() {
       if (!response.ok) {
         throw new Error(data.error || "Proof verification failed")
       }
-      console.log("API verification data:", data)
 
       const { attestationId, merklePath, leaf, leafCount, index } = data
       const formattedMerklePath = merklePath.map((val: ethers.utils.BytesLike) =>
@@ -247,7 +245,7 @@ export default function AuctionList() {
       toast({
         variant: "default",
         title: "Proof Verified",
-        description: "Your zk proof has been verified on-chain. Please proceed to place your bid.",
+        description: `Your zk proof with the attestation Id ${attestationId} has been verified on-chain. Please proceed to place your bid.`,
       })
     } catch (error) {
       console.error("Error during proof verification:", error)
@@ -274,7 +272,6 @@ export default function AuctionList() {
         args: [selectedAuction.id, bidCommitment],
         value: bidValueBN.toBigInt(),
       })
-      console.log("Bid committed:", result)
       localStorage.setItem(
         `bidData-${selectedAuction.id}`,
         JSON.stringify({

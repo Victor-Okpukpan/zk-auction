@@ -56,12 +56,7 @@ export async function POST(req: NextRequest) {
     const proofPromise = new Promise((resolve, reject) => {
       events.once(ZkVerifyEvents.AttestationConfirmed, async (eventData) => {
         try {
-          console.log(
-            `attestation ID: ${attestationId} \nleafDigest: ${leafDigest} \nblockHash: ${blockHash}`
-          );
           const proofDetails = await session.poe(attestationId, leafDigest);
-          console.log("attestation: ", JSON.stringify(proofDetails, null, 2));
-          console.log("proofDetails", proofDetails);
           resolve(proofDetails);
         } catch (error) {
           reject(error);
@@ -72,7 +67,6 @@ export async function POST(req: NextRequest) {
     const transactionInfo = await transactionResult;
 
     if (transactionInfo?.attestationId) {
-      console.log("Proof verified successfully.");
       let details: any, attestationId, merklePath, leaf, leafCount, index;
 
       try {

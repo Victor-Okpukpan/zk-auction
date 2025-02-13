@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -119,7 +120,6 @@ export function BidModal({ nft, isOpen, onClose }: BidModalProps) {
       });
 
       setProgress(75);
-      console.log(result);
       router.push("/auctions");
       setProgress(100);
       toast({
@@ -169,15 +169,6 @@ export function BidModal({ nft, isOpen, onClose }: BidModalProps) {
       setLoadingCreate(false);
       onClose();
     }
-
-    console.log("Auction Created:", {
-      nftContract,
-      nftId,
-      startTime: startTimeUnix,
-      commitDuration,
-      revealDuration,
-      minBid: minBidBigInt,
-    });
   };
 
   return (
@@ -318,8 +309,7 @@ export function BidModal({ nft, isOpen, onClose }: BidModalProps) {
                 >
                   {loadingApprove ? (
                     <>
-                      <span className="mr-2">Approving NFT...</span>
-                      <Progress value={progress} className="w-full h-1" />
+                      <span className="mx-auto">Approving NFT...</span>
                     </>
                   ) : (
                     <>
@@ -336,8 +326,7 @@ export function BidModal({ nft, isOpen, onClose }: BidModalProps) {
                 >
                   {loadingCreate ? (
                     <>
-                      <span className="mr-2">Creating Auction...</span>
-                      <Progress value={progress} className="w-full h-1" />
+                      <span className="mx-auto">Creating Auction...</span>
                     </>
                   ) : (
                     "Create Auction"

@@ -3,8 +3,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { motion } from "framer-motion";
 
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import CreateAuctionButton from "@/components/create-auction-button";
 import AuctionList from "@/components/auction-list";
 import MintNftButton from "@/components/mint-nft-button";

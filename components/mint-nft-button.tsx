@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import { useState } from "react";
 import { nftAbi } from "@/lib/NftAbi";
@@ -16,9 +17,7 @@ export default function MintNftButton() {
         abi: nftAbi,
         address: process.env.NEXT_PUBLIC_SAD_FACE! as `0x{string}`,
         functionName: "mintNft",
-      });
-      console.log(result);
-      
+      });      
       toast({
         title: "NFT Minted",
         description: "Your NFT has been minted successfully.",
