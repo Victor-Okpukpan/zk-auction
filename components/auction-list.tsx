@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { auctionAbi } from "@/lib/AuctionAbi";
 import vk from "../circuits/veekey.json";
 import { ethers } from "ethers";
-import { zkAbi } from "@/lib/ZkFactorization";
+import { zkAbi } from "@/lib/zkAbi";
 
 // -------------------------------
 // Interfaces
@@ -95,7 +95,7 @@ function AuctionCard({ auction }: AuctionCardProps) {
 
   return (
     <img
-      src={imageUrl || "https://via.placeholder.com/300"}
+      src={imageUrl}
       alt={`Auction ${auction.id}`}
       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
     />
@@ -113,6 +113,9 @@ export default function AuctionList() {
   const [bidAmount, setBidAmount] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [loadingProof, setLoadingProof] = useState(false);
+  const [proofVerified, setProofVerified] = useState(false);
+  const [bidCommitment, setBidCommitment] = useState<string | null>(null);
+  const [generatedSalt, setGeneratedSalt] = useState<string | null>(null);
   const [auctions, setAuctions] = useState<IAuction[]>([]);
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
 
@@ -126,6 +129,9 @@ export default function AuctionList() {
     return () => clearInterval(interval);
   }, []);
 
+  // -------------------------------
+  // Proof Generation
+  // -------------------------------
   const generateProof = async (bidValue: string, minBid: any) => {
     const randomSalt = BigInt(Math.floor(Math.random() * 1e12)).toString();
     const input = {
@@ -141,26 +147,29 @@ export default function AuctionList() {
     return { proof, publicSignals, randomSalt };
   };
 
-  const handlePlaceBid = async () => {
+  // -------------------------------
+  // Stage 1: Verify Proof
+  // -------------------------------
+  const handleVerifyProof = async () => {
     if (!selectedAuction || !bidAmount) return;
     setLoadingProof(true);
     try {
       console.log(
-        "Placing bid for auction:",
+        "Verifying proof for auction:",
         selectedAuction.id,
         "with bid amount:",
         bidAmount
       );
-
       const bidValueWeiStr = ethers.utils.parseEther(bidAmount).toString();
-      const bidValueBN = ethers.utils.parseEther(bidAmount);
       const minBidWeiStr = selectedAuction.minBid;
 
+      // Generate the zk proof
       const { proof, publicSignals, randomSalt } = await generateProof(
         bidValueWeiStr,
         minBidWeiStr
       );
 
+      // Call your API to verify the proof off-chain
       const response = await fetch("/api/verify-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,50 +179,93 @@ export default function AuctionList() {
       if (!response.ok) {
         throw new Error(data.error || "Proof verification failed");
       }
-      console.log(data);
+      console.log("API verification data:", data);
 
+      // Destructure data returned from API
       const { attestationId, merklePath, leaf, leafCount, index } = data;
-
-      const result = await writeContractAsync({
-        abi: auctionAbi,
-        address: CONTRACT_ADDRESS,
-        functionName: "proveAttestationAndCommitBid",
-        args: [
-          attestationId,
-          leaf,
-          merklePath,
-          leafCount,
-          index,
-          selectedAuction.id,
-          publicSignals[0],
-        ],
-        value: bidValueBN.toBigInt(),
-      });
-
-      console.log(result);
-
-      localStorage.setItem(
-        `bidData-${selectedAuction.id}`,
-        JSON.stringify({ bidValueWeiStr, randomSalt })
+      const formattedMerklePath = merklePath.map((val: ethers.utils.BytesLike) =>
+        ethers.utils.hexZeroPad(val, 32)
       );
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const zkVerifyAddress = process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS;
+      if (!zkVerifyAddress) throw new Error("zkVerify contract address not set");
+
+      const zkContract = new ethers.Contract(zkVerifyAddress, zkAbi, signer);
+      const verified = await zkContract.verifyProofAttestation(
+        attestationId,
+        leaf,
+        formattedMerklePath,
+        leafCount,
+        index
+      );
+
+      if (!verified) {
+        throw new Error("On-chain proof verification failed");
+      }
+
+      // For this example we assume the bidCommitment is publicSignals[0]
+      setBidCommitment(publicSignals[0]);
+      setGeneratedSalt(randomSalt);
+      setProofVerified(true);
 
       toast({
         variant: "default",
-        title: "Bid Submitted",
-        description: `Your zk proof has been verified with the attestation id ${data.transactionInfo.attestationId} and your bid has been placed.`,
+        title: "Proof Verified",
+        description:
+          "Your zk proof has been successfully verified on-chain. Please proceed to place your bid.",
       });
+    } catch (error) {
+      console.error("Error during proof verification:", error);
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description:
+          "There was an error verifying your proof. Please try again.",
+      });
+    }
+    setLoadingProof(false);
+  };
+
+  // -------------------------------
+  // Stage 2: Commit Bid
+  // -------------------------------
+  const handleCommitBid = async () => {
+    if (!selectedAuction || !bidCommitment || !bidAmount) return;
+    try {
+      const bidValueBN = ethers.utils.parseEther(bidAmount);
+      const result = await writeContractAsync({
+        abi: auctionAbi,
+        address: CONTRACT_ADDRESS,
+        functionName: "commitBid",
+        args: [selectedAuction.id, bidCommitment],
+        value: bidValueBN.toBigInt(),
+      });
+      console.log("Bid committed:", result);
+      localStorage.setItem(
+        `bidData-${selectedAuction.id}`,
+        JSON.stringify({ bidValue: bidValueBN.toString(), randomSalt: generatedSalt })
+      );
+      toast({
+        variant: "default",
+        title: "Bid Submitted",
+        description: "Your bid has been placed.",
+      });
+      // Reset modal and state
       setIsOpen(false);
       setBidAmount("");
+      setProofVerified(false);
+      setBidCommitment(null);
     } catch (error) {
-      console.error("Error generating proof:", error);
+      console.error("Error during bid commitment:", error);
       toast({
         variant: "destructive",
         title: "Bid Submission Failed",
         description:
-          "There was an error generating your zk proof. Please try again.",
+          "There was an error placing your bid. Please try again.",
       });
     }
-    setLoadingProof(false);
   };
 
   const { data: activeAuctionsOnChain, refetch: refetchAuctions } =
@@ -227,18 +279,27 @@ export default function AuctionList() {
     try {
       const storedBidData = localStorage.getItem(`bidData-${id}`);
       if (storedBidData) {
-        const { bidValueWeiStr, randomSalt } = JSON.parse(storedBidData);
+        const { bidValue, randomSalt } = JSON.parse(storedBidData);
         const result = await writeContractAsync({
           abi: auctionAbi,
           address: CONTRACT_ADDRESS,
           functionName: "revealBid",
-          args: [id, bidValueWeiStr, randomSalt],
+          args: [id, bidValue, randomSalt],
         });
         refetchAuctions();
-        console.log(result);
+        toast({
+          variant: "default",
+          title: "Bids Revealed",
+          description: "Your bid for this auction has been revealed successfully!",
+        });
       }
     } catch (error) {
       console.log(error);
+      toast({
+        variant: "destructive",
+        title: "Bid Reveal Failed",
+        description: "Your bid for this auction has failed, please reach out to Auction Owner.",
+      });
     }
   };
 
@@ -398,6 +459,9 @@ export default function AuctionList() {
                         }
                         setSelectedAuction(auction);
                         setIsOpen(true);
+                        // Reset any previous proof state when opening modal
+                        setProofVerified(false);
+                        setBidCommitment(null);
                       }}
                       disabled={
                         phase === "Not Started" ||
@@ -426,7 +490,11 @@ export default function AuctionList() {
 
       <Dialog
         open={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={() => {
+          setIsOpen(false);
+          setProofVerified(false);
+          setBidCommitment(null);
+        }}
         className="relative z-50"
       >
         <div
@@ -470,23 +538,36 @@ export default function AuctionList() {
                 />
               </div>
               <div className="mt-6 flex gap-3">
+                {!proofVerified ? (
+                  <button
+                    onClick={handleVerifyProof}
+                    disabled={
+                      !bidAmount ||
+                      loadingProof ||
+                      (selectedAuction &&
+                        parseFloat(bidAmount) <
+                          parseFloat(
+                            ethers.utils.formatEther(selectedAuction.minBid)
+                          ))
+                    }
+                    className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {loadingProof ? "Verifying Proof..." : "Verify Proof"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCommitBid}
+                    className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    Confirm Bid
+                  </button>
+                )}
                 <button
-                  onClick={handlePlaceBid}
-                  disabled={
-                    !bidAmount ||
-                    loadingProof ||
-                    (selectedAuction &&
-                      parseFloat(bidAmount) <
-                        parseFloat(
-                          ethers.utils.formatEther(selectedAuction.minBid)
-                        ))
-                  }
-                  className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loadingProof ? "Processing..." : "Confirm Bid"}
-                </button>
-                <button
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setProofVerified(false);
+                    setBidCommitment(null);
+                  }}
                   className="rounded-lg border px-4 py-2 font-medium transition-colors hover:bg-muted"
                 >
                   Cancel

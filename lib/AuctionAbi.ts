@@ -44,6 +44,16 @@ export const auctionAbi = [
   },
   {
     type: "function",
+    name: "commitBid",
+    inputs: [
+      { name: "auctionId", type: "uint256", internalType: "uint256" },
+      { name: "bidCommitment", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
     name: "createAuction",
     inputs: [
       { name: "nftAddress", type: "address", internalType: "address" },
@@ -120,21 +130,6 @@ export const auctionAbi = [
   },
   {
     type: "function",
-    name: "proveAttestationAndCommitBid",
-    inputs: [
-      { name: "attestationId", type: "uint256", internalType: "uint256" },
-      { name: "leaf", type: "bytes32", internalType: "bytes32" },
-      { name: "merklePath", type: "bytes32[]", internalType: "bytes32[]" },
-      { name: "leafCount", type: "uint256", internalType: "uint256" },
-      { name: "index", type: "uint256", internalType: "uint256" },
-      { name: "auctionId", type: "uint256", internalType: "uint256" },
-      { name: "bidCommitment", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "payable",
-  },
-  {
-    type: "function",
     name: "revealBid",
     inputs: [
       { name: "auctionId", type: "uint256", internalType: "uint256" },
@@ -150,13 +145,6 @@ export const auctionAbi = [
     inputs: [{ name: "auctionId", type: "uint256", internalType: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "zkvContract",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view",
   },
   {
     type: "event",
