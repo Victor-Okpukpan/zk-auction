@@ -10,9 +10,13 @@ import { Dialog } from "@headlessui/react";
 import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import { auctionAbi } from "@/lib/AuctionAbi";
-import vk from "../circuits/vk.json";
+import vk from "../circuits/veekey.json";
 import { ethers } from "ethers";
+import { zkAbi } from "@/lib/ZkFactorization";
 
+// -------------------------------
+// Interfaces
+// -------------------------------
 interface IBidCommit {
   bidder: string;
   deposit: string;
@@ -36,6 +40,9 @@ interface IAuction {
   bids: IBidCommit[];
 }
 
+// -------------------------------
+// Utility Functions
+// -------------------------------
 const formatCountdown = (seconds: number) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -43,6 +50,61 @@ const formatCountdown = (seconds: number) => {
   return `${hrs}h ${mins}m ${secs}s`;
 };
 
+// -------------------------------
+// AuctionCard Component
+// -------------------------------
+interface AuctionCardProps {
+  auction: IAuction;
+}
+
+function AuctionCard({ auction }: AuctionCardProps) {
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  useEffect(() => {
+    const fetchNFTMetadata = async () => {
+      if (!auction.nftAddress || !auction.tokenId) return;
+      try {
+        // Create a provider using your public RPC URL
+        const provider = new ethers.providers.JsonRpcProvider(
+          process.env.NEXT_PUBLIC_ARB_RPC_URL
+        );
+        const nftContract = new ethers.Contract(
+          auction.nftAddress,
+          ["function tokenURI(uint256 tokenId) view returns (string)"],
+          provider
+        );
+        const tokenURI = await nftContract.tokenURI(auction.tokenId);
+        // Convert ipfs:// URIs to a gateway URL if needed
+        const metadataURI = tokenURI.startsWith("ipfs://")
+          ? tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+          : tokenURI;
+        const response = await fetch(metadataURI);
+        const metadata = await response.json();
+        let img = metadata.image;
+        if (img && img.startsWith("ipfs://")) {
+          img = img.replace("ipfs://", "https://ipfs.io/ipfs/");
+        }
+        setImageUrl(img);
+      } catch (error) {
+        console.error("Error fetching NFT metadata:", error);
+      }
+    };
+
+    fetchNFTMetadata();
+  }, [auction.nftAddress, auction.tokenId]);
+
+  return (
+    <img
+      src={imageUrl || "https://via.placeholder.com/300"}
+      alt={`Auction ${auction.id}`}
+      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+    />
+  );
+}
+
+// -------------------------------
+// AuctionList Component
+// -------------------------------
 export default function AuctionList() {
   const { writeContractAsync } = useWriteContract();
   const { toast } = useToast();
@@ -54,7 +116,7 @@ export default function AuctionList() {
   const [auctions, setAuctions] = useState<IAuction[]>([]);
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
 
-  const CONTRACT_ADDRESS: `0x{string}` = process.env
+  const CONTRACT_ADDRESS = process.env
     .NEXT_PUBLIC_AUCTION_MANAGER! as `0x{string}`;
 
   useEffect(() => {
@@ -92,7 +154,6 @@ export default function AuctionList() {
 
       const bidValueWeiStr = ethers.utils.parseEther(bidAmount).toString();
       const bidValueBN = ethers.utils.parseEther(bidAmount);
-
       const minBidWeiStr = selectedAuction.minBid;
 
       const { proof, publicSignals, randomSalt } = await generateProof(
@@ -105,34 +166,41 @@ export default function AuctionList() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ proof, publicSignals, vk }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || "Proof verification failed");
       }
-
       console.log(data);
+
+      const { attestationId, merklePath, leaf, leafCount, index } = data;
 
       const result = await writeContractAsync({
         abi: auctionAbi,
         address: CONTRACT_ADDRESS,
-        functionName: "commitBid",
-        args: [selectedAuction.id, publicSignals[0]],
+        functionName: "proveAttestationAndCommitBid",
+        args: [
+          attestationId,
+          leaf,
+          merklePath,
+          leafCount,
+          index,
+          selectedAuction.id,
+          publicSignals[0],
+        ],
         value: bidValueBN.toBigInt(),
       });
+
+      console.log(result);
 
       localStorage.setItem(
         `bidData-${selectedAuction.id}`,
         JSON.stringify({ bidValueWeiStr, randomSalt })
       );
 
-      console.log(result);
-
       toast({
         variant: "default",
         title: "Bid Submitted",
-        description: "Your bid has been securely submitted with a zk proof!",
+        description: `Your zk proof has been verified with the attestation id ${data.transactionInfo.attestationId} and your bid has been placed.`,
       });
       setIsOpen(false);
       setBidAmount("");
@@ -207,7 +275,6 @@ export default function AuctionList() {
       const timeout = setTimeout(() => {
         refetchAuctions();
       }, delaySeconds * 1000);
-
       return () => clearTimeout(timeout);
     }
   }, [auctions, currentTime, refetchAuctions]);
@@ -227,10 +294,7 @@ export default function AuctionList() {
         : auction.revealEndTime;
 
     if (currentTime < startTimeNum) {
-      return {
-        phase: "Not Started",
-        countdown: startTimeNum - currentTime,
-      };
+      return { phase: "Not Started", countdown: startTimeNum - currentTime };
     } else if (currentTime >= startTimeNum && currentTime < commitEndTimeNum) {
       return {
         phase: "Commit Phase",
@@ -245,10 +309,7 @@ export default function AuctionList() {
         countdown: revealEndTimeNum - currentTime,
       };
     } else {
-      return {
-        phase: "Finalization Phase",
-        countdown: 0,
-      };
+      return { phase: "Finalization Phase", countdown: 0 };
     }
   };
 
@@ -271,11 +332,7 @@ export default function AuctionList() {
                 className="group overflow-hidden rounded-xl bg-card/80 p-6 shadow-lg backdrop-blur-sm transition-all hover:shadow-xl dark:bg-card/40"
               >
                 <div className="relative aspect-square overflow-hidden rounded-lg">
-                  <img
-                    src="https://via.placeholder.com/300"
-                    alt={`Auction ${auction.id}`}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                  />
+                  <AuctionCard auction={auction} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
                 <div className="mt-4 space-y-3">

@@ -11,7 +11,7 @@ template BidRangeCommit() {
     signal input minBid;
     
     // Ensure bid is at least minBid.
-    component ltMin = LessThan(252);
+    component ltMin = LessThan(250);
     ltMin.in[0] <== bid;
     ltMin.in[1] <== minBid;
     // If bid < minBid, ltMin.out is 1; enforce that ltMin.out == 0
