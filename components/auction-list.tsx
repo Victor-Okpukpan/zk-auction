@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
@@ -185,6 +187,7 @@ export default function AuctionList() {
       salt: randomSalt,
       minBid: minBid,
     }
+    //@ts-expect-error
     const { proof, publicSignals } = await snarkjs.groth16.fullProve(
       input,
       "/bid_range_commit.wasm",
@@ -516,6 +519,7 @@ export default function AuctionList() {
                 {!proofVerified ? (
                   <button
                     onClick={handleVerifyProof}
+                    //@ts-ignore
                     disabled={
                       !bidAmount ||
                       loadingProof ||
