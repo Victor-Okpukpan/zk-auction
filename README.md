@@ -55,11 +55,11 @@ The ZK Auction Platform is a decentralized application (dApp) deployed on Arbitr
 
 - **Auction Manager Contract:**  
   This contract implements the commit–reveal auction mechanism with zk-SNARK verification. It is deployed on Arbitrum (Sepolia).  
-  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0xfb1f1aed080b65f96fd49bc872d6ccf8a96b36c4)
+  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0x9c47e71c4aeeaf4163e9abdbb10bf30811db6fb0)
 
 - **NFT Contract:**  
   A standard ERC721 contract for minting test NFTs.  
-  [View the NFT contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0xcB26E956ba06d77dea887d74592223148dC9D08c)
+  [View the NFT contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0xa39501fa04a52ba2a783d686f01db0f52ab50da7)
 
 ## How to Use the Platform
 
@@ -96,7 +96,7 @@ The ZK Auction Platform is a decentralized application (dApp) deployed on Arbitr
 ### Participating in Auctions
 
 - **Bid Commit Phase:**  
-  During the commit phase, bidders submit their bids along with a zk-SNARK proof and the necessary deposit. All bids remain hidden from others during this phase.
+  During the commit phase, bidders submit their bids with the necessary deposit after generating a zk-SNARK proof, and verifying it off-chain and on-chain. All bids remain hidden from others during this phase.
 
 - **Bid Reveal Phase:**  
   Once the commit phase ends, bidders must reveal their bids.  
@@ -116,7 +116,7 @@ Our platform allows auctions to be set up either as fast-paced events or as more
 
 ## Relevant Links
 
-- [Smart Contract Repository]()
-- [Live URL]()
-- [Verified Auction Manager Contract On Arbitrum Sepolia]()
-- [Verified NFT Contract On Arbitrum Sepolia]()
+- [Smart Contract Repository](https://github.com/Victor-Okpukpan/zk-auction-contract)
+- [Live URL](https://zk-auction.vercel.app/)
+- [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x9c47e71c4aeeaf4163e9abdbb10bf30811db6fb0)
+- [Verified NFT Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0xa39501fa04a52ba2a783d686f01db0f52ab50da7)
