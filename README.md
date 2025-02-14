@@ -55,7 +55,7 @@ The ZK Auction Platform is a decentralized application (dApp) deployed on Arbitr
 
 - **Auction Manager Contract:**  
   This contract implements the commit–reveal auction mechanism with zk-SNARK verification. It is deployed on Arbitrum (Sepolia).  
-  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0x2737cf2eab5514aefe5b8e31aab9b80eece8f5d2)
+  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0x11013fdeab5af8b90c0237e1801b2d56d047db98)
 
 - **NFT Contract:**  
   A standard ERC721 contract for minting test NFTs.  
@@ -118,9 +118,7 @@ Our platform allows auctions to be set up either as fast-paced events or as more
 
 - [Smart Contract Repository](https://github.com/Victor-Okpukpan/zk-auction-contract)
 - [Live URL](https://zk-auction.vercel.app/)
-- [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x2737cf2eab5514aefe5b8e31aab9b80eece8f5d2)
+- [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x11013fdeab5af8b90c0237e1801b2d56d047db98)
 - [Verified NFT Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0xa39501fa04a52ba2a783d686f01db0f52ab50da7)
-
-- [Auction Manager contract used for testing](https://sepolia.arbiscan.io/address/0x9c47e71c4aeeaf4163e9abdbb10bf30811db6fb0)
 
 **Note:** I would advise to clone the repo and run the code locally. If you follow the steps outlined above, you should be able to demo the application as I cannot create a Demo Video due to network issues. Anyways, hope you enjoy this project! ZkVerify has so much potential in the real-world. We just need to find  specific use-cases for it and build something to showcase it. Please leave a star! 
