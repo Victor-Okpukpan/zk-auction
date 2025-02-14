@@ -234,40 +234,29 @@ export default function AuctionList() {
         minBidWeiStr
       );
 
-      // const response = await fetch("/api/verify-proof", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({ proof, publicSignals, vk }),
-      // });
-      // const data = await response.json();
-      // if (!response.ok) {
-      //   throw new Error(data.error || "Proof verification failed");
-      // }
+      const response = await fetch("/api/verify-proof", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proof, publicSignals, vk }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Proof verification failed");
+      }
 
-      // const { attestationId, merklePath, leaf, leafCount, index } = data;
-      // const formattedMerklePath = merklePath.map(
-      //   (val: ethers.utils.BytesLike) => ethers.utils.hexZeroPad(val, 32)
-      // );
-
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const zkVerifyAddress = process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS;
-      if (!zkVerifyAddress)
-        throw new Error("zkVerify contract address not set");
-
-      const zkContract = new ethers.Contract(zkVerifyAddress, zkAbi, signer);
-      const verified = await zkContract.verifyProofAttestation(
-        43996,
-        "0x023b049391a0c16b9f6f0841567bb33bb8eb8678f5cdc5140cb6bc463161df01",
-        [
-          "0x2ad06498efa37fa005089bc788e3c2f3d2f5da5210f8d8937ce54453f1d44210",
-          "0xfccbdd66cee1f80bfd8daadb49aea89ee6654bdfa5147dda39030cf10f455e6b",
-        ],
-        3,
-        0
+      const { attestationId, merklePath, leaf, leafCount, index } = data;
+      const formattedMerklePath = merklePath.map(
+        (val: ethers.utils.BytesLike) => ethers.utils.hexZeroPad(val, 32)
       );
 
-      if (!verified) {
+      const result = await writeContractAsync({
+        abi: zkAbi,
+        address: process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS! as `0x{string}`,
+        functionName: "verifyProofAttestation",
+        args: [attestationId, leaf, formattedMerklePath, leafCount, index],
+      });
+
+      if (result) {
         throw new Error("On-chain proof verification failed");
       }
 
@@ -278,7 +267,7 @@ export default function AuctionList() {
       toast({
         variant: "default",
         title: "Proof Verified",
-        description: `Your zk proof with the attestation Id 44122 has been verified on-chain. Please proceed to place your bid.`,
+        description: `Your zk proof with the attestation Id ${attestationId} has been verified on-chain. Please proceed to place your bid.`,
       });
     } catch (error) {
       console.error("Error during proof verification:", error);

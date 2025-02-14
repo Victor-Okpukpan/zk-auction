@@ -55,7 +55,7 @@ The ZK Auction Platform is a decentralized application (dApp) deployed on Arbitr
 
 - **Auction Manager Contract:**  
   This contract implements the commit–reveal auction mechanism with zk-SNARK verification. It is deployed on Arbitrum (Sepolia).  
-  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0x2fad0a29b18be587eff4e1b0bc7b327e27579eb2)
+  [View and verify the contract on Sepolia Arbiscan](https://sepolia.arbiscan.io/address/0x2737cf2eab5514aefe5b8e31aab9b80eece8f5d2)
 
 - **NFT Contract:**  
   A standard ERC721 contract for minting test NFTs.  
@@ -118,5 +118,5 @@ Our platform allows auctions to be set up either as fast-paced events or as more
 
 - [Smart Contract Repository](https://github.com/Victor-Okpukpan/zk-auction-contract)
 - [Live URL](https://zk-auction.vercel.app/)
-- [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x2fad0a29b18be587eff4e1b0bc7b327e27579eb2)
+- [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x2737cf2eab5514aefe5b8e31aab9b80eece8f5d2)
 - [Verified NFT Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0xa39501fa04a52ba2a783d686f01db0f52ab50da7)
