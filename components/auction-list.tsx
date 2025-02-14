@@ -249,14 +249,28 @@ export default function AuctionList() {
         (val: ethers.utils.BytesLike) => ethers.utils.hexZeroPad(val, 32)
       );
 
-      const result = await writeContractAsync({
-        abi: zkAbi,
-        address: process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS! as `0x{string}`,
-        functionName: "verifyProofAttestation",
-        args: [attestationId, leaf, formattedMerklePath, leafCount, index],
-      });
+      // const result = await writeContractAsync({
+      //   abi: zkAbi,
+      //   address: process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS! as `0x{string}`,
+      //   functionName: "verifyProofAttestation",
+      //   args: [attestationId, leaf, formattedMerklePath, leafCount, index],
+      // });
 
-      if (result) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const signer = provider.getSigner()
+      const zkVerifyAddress = process.env.NEXT_PUBLIC_ZKVERIFY_ADDRESS!
+      if (!zkVerifyAddress) throw new Error("zkVerify contract address not set")
+      const zkContract = new ethers.Contract(zkVerifyAddress, zkAbi, signer);
+
+      const verified = await zkContract.verifyProofAttestation(
+        attestationId,
+        leaf,
+        formattedMerklePath,
+        leafCount,
+        index,
+      )
+
+      if (!verified) {
         throw new Error("On-chain proof verification failed");
       }
 
