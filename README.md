@@ -120,3 +120,7 @@ Our platform allows auctions to be set up either as fast-paced events or as more
 - [Live URL](https://zk-auction.vercel.app/)
 - [Verified Auction Manager Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0x2737cf2eab5514aefe5b8e31aab9b80eece8f5d2)
 - [Verified NFT Contract On Arbitrum Sepolia](https://sepolia.arbiscan.io/address/0xa39501fa04a52ba2a783d686f01db0f52ab50da7)
+
+- [Auction Manager contract used for testing](https://sepolia.arbiscan.io/address/0x9c47e71c4aeeaf4163e9abdbb10bf30811db6fb0)
+
+**Note:** I would advise to clone the repo and run the code locally. If you follow the steps outlined above, you should be able to demo the application as I cannot create a Demo Video due to network issues. Anyways, hope you enjoy this project! ZkVerify has so much potential in the real-world. We just need to find  specific use-cases for it and build something to showcase it. Please leave a star! 
